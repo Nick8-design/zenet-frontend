@@ -1,0 +1,7 @@
+.foot{
+    --tw-bg-opacity: 1;
+    background-color: rgb(19 78 74 / var(--tw-bg-opacity, 1));
+}
+.info{
+    font-size: 14px;
+}

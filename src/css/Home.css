@@ -1,0 +1,18 @@
+.text-gray-500 {
+    --tw-text-opacity: 1;
+    color: rgb(107 114 128 / var(--tw-text-opacity, 1));
+}
+
+
+.check {
+  font-size: 14px; 
+  font-weight: normal;
+}
+
+@media (min-width: 768px) {
+    .check {
+    font-size: 24px;  
+    font-weight: bold;
+  }
+}
+

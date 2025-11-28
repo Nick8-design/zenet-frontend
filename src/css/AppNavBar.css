@@ -1,0 +1,13 @@
+.navHeader{
+        --tw-bg-opacity: 1;
+        background-color: rgb(19 78 74 / var(--tw-bg-opacity, 1));
+
+    
+    
+}
+
+.head{
+        top: 0;
+        position: sticky;
+        left: 0;
+}
