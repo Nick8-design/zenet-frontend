@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState,useRef } from "react";
 import "../css/PayCard.css";
 import PayWifi, { Checkpay } from "../api";
 
@@ -19,6 +19,15 @@ export default function PayCard({ item }) {
   const payModalRef = useRef(null);
   const phoneModalRef = useRef(null);
 
+useEffect(() => {
+  if (phoneModalRef.current) {
+    phoneModalRef.current = new window.bootstrap.Modal(phoneModalRef.current);
+  }
+
+  if (payModalRef.current) {
+    payModalRef.current = new window.bootstrap.Modal(payModalRef.current);
+  }
+}, []);
 
 
   useEffect(() => {
@@ -62,7 +71,7 @@ export default function PayCard({ item }) {
       } catch (err) {
         console.error("Verification error", err);
       }
-    }, 800);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [checkingPayment, reference]);
@@ -132,7 +141,7 @@ export default function PayCard({ item }) {
           </p>
           <p className="text-success">{item.duration} Limited</p>
         </div>
-
+  
         <div className="card-footer bg-green-500">
           <button
             className="btn btn-light linkPay text-success fw-bold"
@@ -145,7 +154,7 @@ export default function PayCard({ item }) {
       </div>
 
       {/* Phone Input Modal */}
-      <div className="modal fade" id="enterPhoneModal">
+      <div className="modal fade" id="enterPhoneModal"   ref={phoneModalRef}   >
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-body text-center">
@@ -189,7 +198,7 @@ export default function PayCard({ item }) {
       {/* Payment Status Modal */}
 
 
-      <div className="modal fade" id="payplan">
+      <div className="modal fade" id="payplan"    ref={payModalRef}>
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content text-center p-3">
             <h3>Payment Initiated</h3>
