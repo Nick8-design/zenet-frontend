@@ -2,14 +2,15 @@
 
  export async function PayWifi(phone, amount) {
     try {
-      const res = await fetch("https://zenet.onrender.com/connect", {
+      const res = await fetch("https://mpay-service.onrender.com/pay-mpesa", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          email:"zenet@gmail.com",
           phone,
-          amount: parseFloat(amount),
+          amount,
         }),
       });
 
@@ -21,6 +22,29 @@
   }
  export default PayWifi
 
+
+ export async function Checkpay(ref) {
+  try {
+    const res = await fetch(
+      `https://mpay-service.onrender.com/verify/${ref}`,
+
+    );
+
+    console.log(`verify  ${res}`)
+
+    if (!res.ok) {
+      return { status: "error" };
+    }
+
+    const data = await res.json();
+      
+    return data;
+
+  } catch (err) {
+    console.error(err);
+    return { status: "error" };
+  }
+}
 
   
 

@@ -1,59 +1,126 @@
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import "../css/PayCard.css";
-import PayWifi from "../api";
+import PayWifi, { Checkpay } from "../api";
+
+import { useNavigate } from "react-router-dom";
 
 
 export default function PayCard({ item }) {
+
   const [phnNum, setPhn] = useState("");
+  const [msg, setMsg] = useState("");
+  const [reference, setReference] = useState(null);
+  const [checkingPayment,setCheckingPayment] = useState(false);
 
-  const [msg,setMsg]=useState("")
 
- 
 
-  const handleSubmit = async () => {
-    const isValid = isValidKenyanPhone(phnNum);
-  
+  const navigate = useNavigate();
 
-    if (isValid) {
-      
+  const payModalRef = useRef(null);
+  const phoneModalRef = useRef(null);
+
+
+
+  useEffect(() => {
+    if (!checkingPayment || !reference) return;
+
+    let visible = true;
+    const startTime = Date.now();
+
+    const interval = setInterval(async () => {
       try {
-  const res = await PayWifi(phnNum, item.price);
-  const data = await res.json();
+        // ⏱ stop after 3 minutes
+        if (Date.now() - startTime > 180000) {
+          clearInterval(interval);
+          setCheckingPayment(false);
+          payModalRef.current?.hide();
+          setMsg("⌛ Payment timed out.");
+          return;
+        }
 
-  if (res.ok) {
-    setMsg(` ${data.message}`);
-    console.log("message:", data.message);
-  } else {
-    setMsg(`${data.error || "Payment failed"}`);
-  }
+        // 🔄 blink modal
+        visible ? payModalRef.current?.hide() : payModalRef.current?.show();
+        visible = !visible;
 
-  
-  const modal = new window.bootstrap.Modal(
-    document.getElementById("payplan")
-  );
+        const data = await Checkpay(reference);
 
-  modal.show();
+        if (data.status === "success") {
+          clearInterval(interval);
+          setCheckingPayment(false);
+          payModalRef.current?.hide();
 
-  
-} catch (err) {
-  console.error("Error:", err);
-  setMsg(" Error connecting to server.");
-}
+          // ✅ perform success action
+          handlePaymentSuccess(data);
 
+        } else if (data.status === "failed") {
+          clearInterval(interval);
+          setCheckingPayment(false);
+          payModalRef.current?.hide();
+          setMsg("❌ Payment failed.");
+        }
 
+      } catch (err) {
+        console.error("Verification error", err);
+      }
+    }, 800);
 
+    return () => clearInterval(interval);
+  }, [checkingPayment, reference]);
 
-    } else {
-     //replace window with boostrap incase the modal doesnt show
-      const modal = new window.Modal(document.getElementById("alizen"));
-      modal.show();
+  /* ---------------- SUBMIT ---------------- */
+  const handleSubmit = async () => {
+    if (!isValidKenyanPhone(phnNum)) {
+      new window.bootstrap.Modal(
+        document.getElementById("alizen")
+      ).show();
+      return;
+    }
+
+    const formatted = formatKenyanPhone(phnNum);
+    setPhn(formatted);
+
+    try {
+      const res = await PayWifi(formatted, item.price);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMsg("Payment request failed.");
+        return;
+      }
+
+      setReference(data.data.reference);
+      setCheckingPayment(true);
+      setMsg("🔄 Checking for payment...");
+
+      // 🔴 hide phone modal
+      phoneModalRef.current?.hide();
+
+      // 🟢 show checking modal
+      payModalRef.current?.show();
+
+    } catch (err) {
+      console.error(err);
+      setMsg("❌ Server error.");
     }
   };
 
+  /* ---------------- SUCCESS HANDLER ---------------- */
+  const handlePaymentSuccess = (data) => {
+    // any logic (save receipt, unlock wifi, etc.)
+    console.log("PAID:", data);
+
+    navigate("/paidstatus", {
+      state: {
+        reference,
+        amount: item.price,
+        plan: item.planName,
+      },
+    });
+  };
+
+
   return (
-
     <div className="mb-3" key={item.id}>
-
 
       <div className="card paycard text-center">
         <div className="card-body green rounded-top">
@@ -77,9 +144,7 @@ export default function PayCard({ item }) {
         </div>
       </div>
 
-      
-
-
+      {/* Phone Input Modal */}
       <div className="modal fade" id="enterPhoneModal">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
@@ -93,65 +158,77 @@ export default function PayCard({ item }) {
                 onChange={(e) => setPhn(e.target.value)}
               />
             </div>
+
             <div className="p-3 d-flex justify-content-center gap-2">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
+              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
                 Cancel
               </button>
 
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSubmit}
-              >
+              <button type="button" className="btn btn-primary" onClick={handleSubmit}>
                 Submit
               </button>
-
             </div>
           </div>
         </div>
       </div>
 
-      {/* Error Modal */}
+      {/* Invalid Phone Modal */}
       <div className="modal fade" id="alizen">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content text-center p-3">
-            <i className="bi bi-x-circle text-danger ex "></i>
+            <i className="bi bi-x-circle text-danger ex"></i>
             <h1>Oops...</h1>
             <p>Phone number is invalid, please confirm.</p>
-          
-            <div className=" p-3 d-grid gap-2 d-flex justify-content-center"> 
-              <button className=" btn btn-primary okbtn " data-bs-dismiss="modal">OK</button>
-             </div>
+            <div className="p-3 d-flex justify-content-center">
+              <button className="btn btn-primary okbtn" data-bs-dismiss="modal">OK</button>
+            </div>
           </div>
         </div>
       </div>
 
-     
+      {/* Payment Status Modal */}
+
+
       <div className="modal fade" id="payplan">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content text-center p-3">
-            <h3>Successful</h3>
-         <p className="lead text-primary">{msg}</p>
-            
-          
+            <h3>Payment Initiated</h3>
+            <p className="lead text-primary">{msg}</p>
           </div>
         </div>
       </div>
+
+
+
     </div>
   );
-
-
 
   function isValidKenyanPhone(number) {
     number = number.replace(/\s+/g, "").replace(/^(\+)?/, "");
     const regex = /^(?:254|0)?7\d{8}$/;
     return regex.test(number);
   }
+
+  function formatKenyanPhone(number) {
+  // remove spaces
+  number = number.replace(/\s+/g, "");
+
+  // remove leading +
+  if (number.startsWith("+")) {
+    number = number.slice(1);
+  }
+
+  // if starts with 0, replace with 254
+  if (number.startsWith("0")) {
+    number = "254" + number.slice(1);
+  }
+
+  // if starts with 7, prepend 254
+  if (number.startsWith("7")) {
+    number = "254" + number;
+  }
+
+  return `+${number}`;
 }
 
-
-
+}
